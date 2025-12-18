@@ -18,9 +18,9 @@ export function Footer() {
              <Link href="/" className="flex items-center space-x-3 group">
             <div
               style={{
-                width: "48px",
+                 width: "48px",
                 height: "48px",
-                background: "#191c20",
+                background: "#dc2626", // CHANGED: Red background (red-600 hex)
                 borderRadius: "50%",
                 display: "flex",
                 alignItems: "center",
@@ -33,16 +33,16 @@ export function Footer() {
                 style={{
                   position: "absolute",
                   inset: "5%",
-                  border: "2.5px solid #d4af37",
+                  border: "2.5px solid #ffffff", // CHANGED: White border
                   borderRadius: "50%",
                 }}
               />
               <span
                 style={{
-                  color: "#d4af37",
+                   color: "#ffffff", // CHANGED: White text
                   fontFamily: "'Georgia', 'Times New Roman', serif",
                   fontWeight: 500,
-                  fontSize: "23px", // 48 * 0.48
+                  fontSize: "23px",
                   letterSpacing: "0.02em",
                   zIndex: 1,
                   textTransform: "lowercase",

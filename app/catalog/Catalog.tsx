@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Image from "next/image";
 
 interface Product {
   id: string;
@@ -14,28 +13,30 @@ interface Product {
   purity?: string;
   weight?: string;
   description?: string;
-  price?: number; // Assuming price might be available for sorting/display
-  // category-specific fields from your original code
+  price?: number;
+  inStock?: boolean;
   style?: string;
   accentStones?: string;
   diamondShape?: string;
   color?: string;
   size?: string;
-  priceRange?: string; // For filtering
+  priceRange?: string;
   [key: string]: any;
 }
 
-// Global category list from your code
-const categories = [
+// Global category list - matched with Admin
+export const categories = [
   { value: "all", label: "All Collections" },
   { value: "Ring", label: "Ring" },
   { value: "Necklaces", label: "Necklaces" },
   { value: "Earring", label: "Earring" },
   { value: "Bracelets", label: "Bracelets" },
   { value: "Pendants", label: "Pendants" },
+  { value: "Chain", label: "Chain" },
+  { value: "Mangalsutra", label: "Mangalsutra" },
 ];
 
-// Your original category-specific filter definitions
+// Category-specific filter definitions
 const categoryFilterDefinitions: Record<
   string,
   Record<string, { label: string; options: string[] }>
@@ -43,57 +44,37 @@ const categoryFilterDefinitions: Record<
   all: {
     metal: {
       label: "Metal",
-      options: ["Gold", "Silver", "Platinum", "Rose Gold"],
+      options: ["Gold", "Silver", "Platinum", "Rose Gold", "White Gold"],
     },
-    purity: { label: "Purity", options: ["18K", "22K", "24K"] },
+    purity: { label: "Purity", options: ["18K", "22K", "24K", "925"] },
   },
   Ring: {
     style: {
       label: "Style",
-      options: ["Solitaire", "Pavé", "Halo", "Vintage"],
-    },
-    accentStones: {
-      label: "Accent Stones",
-      options: ["Lab Diamond", "Black Diamond", "Emerald", "None"],
-    },
-    diamondShape: {
-      label: "Diamond Shape",
-      options: ["Round", "Oval", "Princess", "Emerald"],
+      options: ["Solitaire", "Pavé", "Halo", "Vintage", "Couple Bands"],
     },
     metal: {
       label: "Metal",
-      options: ["White Gold", "Rose Gold", "Yellow Gold", "Platinum"],
+      options: ["Gold", "Silver", "Platinum", "Rose Gold", "White Gold"],
     },
   },
   Necklaces: {
-    style: { label: "Style", options: ["Pendant", "Choker", "Long"] },
+    style: { label: "Style", options: ["Pendant", "Choker", "Long", "Chain"] },
     metal: { label: "Metal", options: ["Gold", "Silver", "Platinum"] },
-    color: { label: "Color", options: ["White", "Yellow", "Rose"] },
   },
   Earring: {
-    style: { label: "Style", options: ["Stud", "Hoop", "Drop"] },
-    metal: { label: "Metal", options: ["Gold", "Silver", "Platinum"] },
+    style: { label: "Style", options: ["Stud", "Hoop", "Drop", "Jhumka"] },
+    metal: { label: "Metal", options: ["Gold", "Silver", "Platinum", "Rose Gold"] },
   },
   Bracelets: {
     style: { label: "Style", options: ["Bangle", "Chain", "Cuff"] },
-    metal: { label: "Metal", options: ["Gold", "Silver", "Platinum"] },
+    metal: { label: "Metal", options: ["Gold", "Silver", "Platinum", "Rose Gold"] },
   },
   Pendants: {
-    style: { label: "Style", options: ["Iconic", "Minimal", "Statement"] },
+    style: { label: "Style", options: ["Iconic", "Minimal", "Statement", "Religious"] },
     metal: { label: "Metal", options: ["Gold", "Silver", "Platinum"] },
   },
 };
-
-// A simple SVG icon for the star rating
-const StarIcon = () => (
-  <svg
-    className="w-4 h-4 text-amber-400"
-    viewBox="0 0 20 20"
-    fill="currentColor"
-  >
-    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-  </svg>
-);
 
 export default function CatalogPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -117,7 +98,7 @@ export default function CatalogPage() {
     );
   };
 
-  // Fetch products from your API endpoint
+  // Fetch products from API endpoint
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -150,7 +131,6 @@ export default function CatalogPage() {
     fetchProducts();
   }, []);
 
-  // Your original helper functions for filtering
   const toggleFilter = (category: string, filterKey: string, value: string) => {
     setSelectedFilters((prev) => {
       const categoryFilters = { ...(prev[category] || {}) };
@@ -188,25 +168,28 @@ export default function CatalogPage() {
     return selectedFilters[selectedCategory] || {};
   }, [selectedFilters, selectedCategory]);
 
-  // Your original main filtering logic
   useEffect(() => {
     let cur = [...products];
 
+    // 1. Search Filtering
     if (searchTerm.trim()) {
       const q = searchTerm.trim().toLowerCase();
       cur = cur.filter((p) => {
         return (
           (p.name || "").toLowerCase().includes(q) ||
           (p.description || "").toLowerCase().includes(q) ||
-          (p.category || "").toLowerCase().includes(q)
+          (p.category || "").toLowerCase().includes(q) ||
+          (p.metal || "").toLowerCase().includes(q)
         );
       });
     }
 
+    // 2. Category Filtering (Exact Match unless "all")
     if (selectedCategory !== "all") {
       cur = cur.filter((p) => p.category === selectedCategory);
     }
 
+    // 3. Attribute Filtering (Metal, Style, etc.)
     const defs = getFilterDefinitionsForCategory(selectedCategory);
     const selections = activeFiltersForCategory || {};
 
@@ -215,22 +198,33 @@ export default function CatalogPage() {
       if (picks.length === 0) return;
 
       cur = cur.filter((product) => {
-        return Object.entries(selections).every(([filterKey, picks]) => {
-          if (!picks || picks.length === 0) return true;
-          const rawVal = (product[filterKey] || "").toString().toLowerCase();
-          // Normalize filter values for case and basic format (strip spaces, optionally strip K)
-          return picks.some((p) => {
-            let filterVal = p.toLowerCase().replace(/\s+/g, "");
-            let prodVal = rawVal.replace(/\s+/g, "");
-            // Handle '22K' vs '22'
-            filterVal = filterVal === "22k" ? "22" : filterVal;
-            prodVal = prodVal === "22k" ? "22" : prodVal;
-            return prodVal.includes(filterVal) || filterVal.includes(prodVal);
-          });
+        const rawVal = (product[filterKey] || "").toString().toLowerCase();
+        
+        // If the product doesn't have this attribute, strict filtering might hide it.
+        // But usually we want to hide items that don't match.
+        if (!rawVal) return false;
+
+        return picks.some((p) => {
+          let filterVal = p.toLowerCase().trim();
+          
+          // --- FIX FOR GOLD vs ROSE GOLD ---
+          if (filterKey === "metal" && filterVal === "gold") {
+             // If user specifically selected "Gold", we do NOT want "Rose Gold" or "White Gold"
+             // to appear. We only want plain "Gold" or "Yellow Gold".
+             if (rawVal.includes("rose") || rawVal.includes("white")) {
+                return false;
+             }
+          }
+          // ---------------------------------
+
+          // Basic inclusion check (handles "22K" vs "22" logic if needed, simplified here)
+          // We can just check includes for flexibility (e.g. "18k" matches "18k gold")
+          return rawVal.includes(filterVal);
         });
       });
     });
 
+    // 4. Sorting
     cur.sort((a, b) => {
       switch (sortBy) {
         case "rating":
@@ -295,11 +289,10 @@ export default function CatalogPage() {
   return (
     <div className="min-h-screen bg-stone-50 font-sans">
       <header className="relative h-96 md:h-[500px] overflow-hidden">
-        <Image
+        <img
           src="https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=2853&auto=format&fit=crop"
           alt="Elegant jewelry on display"
-          fill
-          className="object-cover"
+          className="w-full h-full absolute inset-0 object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-black/20" />
         <div className="absolute inset-0 flex items-center justify-center text-center text-white px-4">
@@ -325,20 +318,6 @@ export default function CatalogPage() {
                 placeholder="Search by name, style, metal..."
                 className="w-full rounded-xl border border-stone-300 bg-white py-3 pl-4 pr-10 text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400 transition-shadow"
               />
-              <svg
-                className="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
-                />
-              </svg>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 lg:col-span-2">
               <select
@@ -481,10 +460,8 @@ export default function CatalogPage() {
                   <article
                     key={product.id}
                     className="group bg-white rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 flex flex-col"
-                    style={{ minHeight: "320px", maxHeight: "370px" }}
                   >
-                    {/* // Update the product card to handle videos */}
-                    <div className="relative w-full flex-1 overflow-hidden rounded-t-xl bg-stone-50">
+                    <div className="relative w-full aspect-square overflow-hidden rounded-t-xl bg-stone-50">
                       {product.image && product.image.match(/\.(mp4|webm|ogg)$/i) ? (
                         <video
                           src={product.image}
@@ -495,19 +472,34 @@ export default function CatalogPage() {
                           playsInline
                         />
                       ) : (
-                        <Image
+                        <img
                           src={product.image || `/placeholder.svg?height=300&width=300&query=${product.category || ""} jewelry`}
                           alt={product.name}
-                          fill
-                          className="object-cover transition-transform duration-300 group-hover:scale-105"
+                          className="w-full h-full absolute inset-0 object-cover transition-transform duration-300 group-hover:scale-105"
                         />
                       )}
                     </div>
 
-                    <div className="p-4 bg-white text-center">
-                      <h3 className=" text-lg font-semibold text-stone-800 mb-1">
-                        {product.category}
+                    <div className="p-4 bg-white text-center flex flex-col items-center gap-1">
+                      <h3 className="text-lg font-semibold text-stone-800">
+                        {product.name}
                       </h3>
+                      <p className="text-sm text-stone-500 font-medium">
+                        {product.category} {product.price !== undefined ? `- ₹${product.price}` : ""}
+                      </p>
+                      <p className="text-sm text-stone-600">
+                        {product.metal} {product.purity ? `(${product.purity})` : ""}, {product.weight}
+                      </p>
+
+                      <span
+                        className={`mt-2 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          product.inStock
+                            ? "bg-stone-900 text-stone-50"
+                            : "bg-stone-100 text-stone-800"
+                        }`}
+                      >
+                        {product.inStock ? "In Stock" : "Out of Stock"}
+                      </span>
                     </div>
                   </article>
                 ))}

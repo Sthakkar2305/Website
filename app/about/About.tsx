@@ -779,15 +779,15 @@ export default function About() {
       </motion.section>
 
       {/* Contact CTA */}
-      <motion.section
+      {/* <motion.section
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: "-100px" }}
         variants={containerVariants}
         className="py-12 sm:py-16 md:py-20 bg-gradient-to-br from-red-500 via-rose-500 to-amber-500 relative overflow-hidden"
-      >
+      > */}
         {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-20">
+        {/* <div className="absolute inset-0 opacity-20">
           <div
             className="w-full h-full"
             style={{
@@ -795,9 +795,9 @@ export default function About() {
               backgroundSize: "60px 60px",
             }}
           ></div>
-        </div>
+        </div> */}
 
-        <div className="container mx-auto px-4 relative z-10">
+        {/* <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-4xl mx-auto text-center text-white">
             <motion.h2
               variants={itemVariants}
@@ -845,8 +845,8 @@ export default function About() {
               </motion.div>
             </motion.div>
           </div>
-        </div>
-      </motion.section>
+        </div> */}
+      {/* </motion.section> */}
     </div>
   );
 }

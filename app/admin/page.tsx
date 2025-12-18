@@ -12,6 +12,18 @@ import { v4 as uuidv4 } from 'uuid'
 
 const ADMIN_PASSWORD = "admin@123"
 
+// Matches Catalog.tsx categories
+const categories = [
+  { value: "all", label: "All Collections" },
+  { value: "Ring", label: "Ring" },
+  { value: "Necklaces", label: "Necklaces" },
+  { value: "Earring", label: "Earring" },
+  { value: "Bracelets", label: "Bracelets" },
+  { value: "Pendants", label: "Pendants" },
+  { value: "Chain", label: "Chain" },
+  { value: "Mangalsutra", label: "Mangalsutra" },
+];
+
 interface MetalRate {
     gold: number
     silver: number
@@ -49,6 +61,10 @@ export default function AdminPage() {
     const [rates, setRates] = useState<MetalRate>({ gold: 6250, silver: 78, lastUpdated: new Date().toISOString() })
     const [sliderItems, setSliderItems] = useState<SliderItem[]>([])
     const [products, setProducts] = useState<Product[]>([])
+    
+    // Filtering for Admin List View
+    const [selectedCategory, setSelectedCategory] = useState("all")
+    
     const [editingSlider, setEditingSlider] = useState<SliderItem | null>(null)
     const [editingProduct, setEditingProduct] = useState<Product | null>(null)
     const [deletingProductId, setDeletingProductId] = useState<string | null>(null)
@@ -339,6 +355,12 @@ export default function AdminPage() {
         return url.match(/\.(mp4|webm|ogg)$/i) ? 'video' : 'image'
     }
 
+    // Filter products for the admin view
+    const filteredAdminProducts = products.filter(p => {
+        if (selectedCategory === "all") return true;
+        return p.category === selectedCategory;
+    });
+
     if (showPasswordPrompt) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -569,12 +591,27 @@ export default function AdminPage() {
                 <TabsContent value="products">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-semibold">Products</h2>
-                        <Button onClick={() => startEditingProduct({ id: "", name: "", category: "", price: 0, image: "", metal: "", purity: "", weight: "", inStock: true })}>
-                            <Plus className="w-4 h-4 mr-2" /> Add Product
-                        </Button>
+                        <div className="flex gap-2">
+                             {/* Admin Filter Dropdown */}
+                            <select
+                                value={selectedCategory}
+                                onChange={(e) => setSelectedCategory(e.target.value)}
+                                className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            >
+                                {categories.map((c) => (
+                                    <option key={c.value} value={c.value}>
+                                        {c.label}
+                                    </option>
+                                ))}
+                            </select>
+                            
+                            <Button onClick={() => startEditingProduct({ id: "", name: "", category: "Ring", price: 0, image: "", metal: "", purity: "", weight: "", inStock: true })}>
+                                <Plus className="w-4 h-4 mr-2" /> Add Product
+                            </Button>
+                        </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {products.map((product) => {
+                        {filteredAdminProducts.map((product) => {
                             const mediaType = getMediaType(product.image);
                             return (
                                 <Card key={product.id}>
@@ -619,7 +656,20 @@ export default function AdminPage() {
                             <CardContent className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <Input placeholder="Name" value={editingProduct.name} onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })} />
-                                    <Input placeholder="Category" value={editingProduct.category} onChange={(e) => setEditingProduct({ ...editingProduct, category: e.target.value })} />
+                                    
+                                    {/* Edit Category Dropdown */}
+                                    <select
+                                        value={editingProduct.category}
+                                        onChange={(e) => setEditingProduct({ ...editingProduct, category: e.target.value })}
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {categories.filter(c => c.value !== 'all').map((c) => (
+                                            <option key={c.value} value={c.value}>
+                                                {c.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    
                                     <Input placeholder="Price" type="number" value={editingProduct.price} onChange={(e) => setEditingProduct({ ...editingProduct, price: parseFloat(e.target.value) })} />
                                     <Input placeholder="Metal" value={editingProduct.metal} onChange={(e) => setEditingProduct({ ...editingProduct, metal: e.target.value })} />
                                     <Input placeholder="Purity" value={editingProduct.purity} onChange={(e) => setEditingProduct({ ...editingProduct, purity: e.target.value })} />

@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, TrendingDown } from "lucide-react";
-import Link from "next/link";
+// import Link from "next/link"; // Removed to fix build error
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/navbar";
 
@@ -768,7 +768,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Mobile Hero Slider - Keep existing mobile implementation */}
+          {/* Mobile Hero Slider - Fixed Black Bars */}
           <div className="md:hidden">
             <div className="relative h-[400px] rounded-3xl overflow-hidden shadow-2xl bg-white dark:bg-gray-800 mx-2">
               {slidesToShow.map((item, index) => (
@@ -779,12 +779,12 @@ export default function HomePage() {
                     : "opacity-0 z-0"
                     }`}
                 >
-                  <div className="relative flex justify-center items-center w-full">
-                    <div className="relative aspect-[9/16] max-w-[400px] w-full bg-black overflow-hidden rounded-lg">
-                      {item.image.match(/\.(mp4|webm|ogg)$/i) ? (
+                  <div className="relative w-full h-full">
+                    {/* Updated for Full Cover - No Black Bars */}
+                    {item.image.match(/\.(mp4|webm|ogg)$/i) ? (
                         <video
                           src={item.image}
-                          className="w-full h-full object-contain bg-black"
+                          className="w-full h-full object-cover"
                           autoPlay
                           loop
                           muted
@@ -794,7 +794,7 @@ export default function HomePage() {
                         <img
                           src={item.image || "/placeholder.svg"}
                           alt={item.title}
-                          className="w-full h-full object-contain bg-black"
+                          className="w-full h-full object-cover"
                         />
                       )}
 
@@ -805,16 +805,15 @@ export default function HomePage() {
                       <div className="absolute z-20 bottom-8 left-4 right-4 text-white text-center">
                         <h1 className="text-2xl font-light leading-tight mb-2">{item.title}</h1>
                         <p className="text-sm mb-4 opacity-90 font-light">{item.subtitle}</p>
-                        <Link href={item.link || "#"}>
+                        <a href={item.link || "#"}>
                           <Button
                             size="sm"
                             className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-6 py-2 rounded-full font-medium shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
                           >
                             Shop Now
                           </Button>
-                        </Link>
+                        </a>
                       </div>
-                    </div>
                   </div>
 
                 </div>
@@ -863,7 +862,7 @@ export default function HomePage() {
             <div className="grid grid-cols-12 gap-8 max-w-7xl mx-auto">
               {/* Large Featured Item */}
               <div className="col-span-8 row-span-2">
-                <Link href={collections[0].link} className="group block">
+                <a href={collections[0].link} className="group block">
                   <div className="relative h-[600px] rounded-3xl overflow-hidden shadow-2xl hover:shadow-3xl transition-all duration-700 transform hover:scale-[1.02] bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-700">
                     <img
                       src={collections[0].image || "/placeholder.svg"}
@@ -873,7 +872,7 @@ export default function HomePage() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
                     {/* Floating Discount Badge */}
-                    <div className="absolute top-6 right-6 bg-gradient-to-r from-red-500 to-rose-600 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
+                    <div className="absolute top-6 right-6 bg-gradient-to-r from-red-500 to-rose-600 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg">
                       {collections[0].discount}
                     </div>
 
@@ -902,13 +901,13 @@ export default function HomePage() {
                       </div>
                     </div>
                   </div>
-                </Link>
+                </a>
               </div>
 
               {/* Medium Items */}
               {collections.slice(1, 3).map((collection, index) => (
                 <div key={collection.id} className="col-span-4">
-                  <Link href={collection.link} className="group block">
+                  <a href={collection.link} className="group block">
                     <div className="relative h-[285px] rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:scale-[1.02] bg-white dark:bg-gray-800">
                       <img
                         src={collection.image || "/placeholder.svg"}
@@ -939,14 +938,14 @@ export default function HomePage() {
                         </div>
                       </div>
                     </div>
-                  </Link>
+                  </a>
                 </div>
               ))}
 
               {/* Bottom Row - Three Equal Items */}
               {collections.slice(3, 6).map((collection, index) => (
                 <div key={collection.id} className="col-span-4">
-                  <Link href={collection.link} className="group block">
+                  <a href={collection.link} className="group block">
                     <div className="relative h-[320px] rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:scale-[1.02] bg-white dark:bg-gray-800">
                       <img
                         src={collection.image || "/placeholder.svg"}
@@ -980,7 +979,7 @@ export default function HomePage() {
                         </div>
                       </div>
                     </div>
-                  </Link>
+                  </a>
                 </div>
               ))}
             </div>
@@ -990,7 +989,7 @@ export default function HomePage() {
           <div className="hidden md:block lg:hidden">
             <div className="grid grid-cols-2 gap-6 max-w-4xl mx-auto">
               {collections.map((collection, index) => (
-                <Link
+                <a
                   key={collection.id}
                   href={collection.link}
                   className="group block"
@@ -1028,7 +1027,7 @@ export default function HomePage() {
                       </div>
                     </div>
                   </div>
-                </Link>
+                </a>
               ))}
             </div>
           </div>
@@ -1037,7 +1036,7 @@ export default function HomePage() {
           <div className="block md:hidden">
             <div className="grid grid-cols-1 gap-6 max-w-md mx-auto">
               {collections.map((collection, index) => (
-                <Link
+                <a
                   key={collection.id}
                   href={collection.link}
                   className="group block"
@@ -1075,7 +1074,7 @@ export default function HomePage() {
                       </div>
                     </div>
                   </div>
-                </Link>
+                </a>
               ))}
             </div>
           </div>
@@ -1216,9 +1215,9 @@ export default function HomePage() {
                 <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
                   {item.desc}
                 </p>
-                <Link href={item.link}>
+                <a href={item.link}>
                   <Button className={item.btnClasses}>{item.btn}</Button>
-                </Link>
+                </a>
               </motion.div>
             ))}
           </div>
