@@ -15,11 +15,12 @@ import {
   Lock,
   Unlock,
   Circle as CircleIcon,
-  Maximize2, // Icon for Ellipse mode
+  Maximize2,
   ArrowDownToLine,
   ArrowLeftRight,
   MoveHorizontal,
-  MoveVertical
+  MoveVertical,
+  Ruler
 } from "lucide-react";
 
 // --- Data: Ring Size Chart ---
@@ -92,18 +93,19 @@ export default function BalkrushnaRingMeasurementPage() {
   // Measurement Values in MM
   const [fingerThicknessMm, setFingerThicknessMm] = useState(15.0);
   
-  // NEW: Split Ring Dimensions for Ellipse/Irregular Mode
-  const [ringWidthMm, setRingWidthMm] = useState(17.0);  // Horizontal Dia
-  const [ringHeightMm, setRingHeightMm] = useState(17.0); // Vertical Dia
-
+  // Ring Dimensions
+  const [ringWidthMm, setRingWidthMm] = useState(17.0);  // Diameter
+  
   // Calibration Temporary State
   const [calibCardWidthPx, setCalibCardWidthPx] = useState(200); 
   const [calibCoinWidthPx, setCalibCoinWidthPx] = useState(100);
 
   // UI State
   const [activeTab, setActiveTab] = useState("finger");
-  // Updated Mode: 'circle' or 'ellipse' (for irregular rings)
-  const [ringShapeMode, setRingShapeMode] = useState<"circle" | "ellipse">("circle");
+  
+  // 'caliper' mode now shows a Ring Shape but logic is Width Matching
+  const [ringViewMode, setRingViewMode] = useState<"circle" | "caliper">("caliper");
+  
   const [showCardCalib, setShowCardCalib] = useState(false);
   const [showCoinCalib, setShowCoinCalib] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
@@ -117,6 +119,7 @@ export default function BalkrushnaRingMeasurementPage() {
     const div = document.createElement("div");
     div.style.width = "1in";
     div.style.visibility = "hidden";
+    div.style.position = "absolute";
     document.body.appendChild(div);
     const pxPerInch = div.offsetWidth;
     document.body.removeChild(div);
@@ -131,8 +134,7 @@ export default function BalkrushnaRingMeasurementPage() {
 
   // --- Utilities ---
   const mmToPx = (mm: number) => mm * pixelsPerMm;
-  const pxToMm = (px: number) => px / pixelsPerMm;
-
+  
   // --- Action Handlers ---
   const saveCardCalibration = () => {
     const newPpm = calibCardWidthPx / 53.98;
@@ -153,7 +155,6 @@ export default function BalkrushnaRingMeasurementPage() {
   const resetMeasurements = () => {
     setFingerThicknessMm(15.0);
     setRingWidthMm(17.0);
-    setRingHeightMm(17.0);
     setMeasuredSize(null);
   };
 
@@ -162,17 +163,9 @@ export default function BalkrushnaRingMeasurementPage() {
     findClosestSize(circ, "circumference");
   };
 
-  // UPDATED: Calculate based on Shape Mode
   const calculateRingSize = () => {
-    let diameterToUse = ringWidthMm; // Default circle
-    
-    if (ringShapeMode === 'ellipse') {
-      // For irregular/bent rings, average the Widest and Narrowest parts
-      // This is the standard Jeweler method for out-of-round rings
-      diameterToUse = (ringWidthMm + ringHeightMm) / 2;
-    }
-
-    findClosestSize(diameterToUse, "diameter");
+    // In both Circle and Caliper mode, ringWidthMm represents the diameter
+    findClosestSize(ringWidthMm, "diameter");
   };
 
   const findClosestSize = (value: number, type: "diameter" | "circumference") => {
@@ -188,7 +181,6 @@ export default function BalkrushnaRingMeasurementPage() {
     }
     setMeasuredSize(closest);
     
-    // PRESERVED SCROLLING LOGIC
     setTimeout(() => {
        document.getElementById("result-card")?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
@@ -197,78 +189,16 @@ export default function BalkrushnaRingMeasurementPage() {
   // --- Input Handlers ---
   const handleSliderChange = (setter: (v: number) => void, val: string) => {
     if (isLocked) return;
-    const num = parseFloat(val);
-    setter(num);
-    // If in circle mode, keep width/height synced
-    if (ringShapeMode === 'circle' && (setter === setRingWidthMm || setter === setRingHeightMm)) {
-        setRingWidthMm(num);
-        setRingHeightMm(num);
-    }
+    setter(parseFloat(val));
   };
 
-  // UPDATED: Finer control (0.05mm) for high accuracy
   const handleFineTune = (setter: (v: number) => void, current: number, delta: number) => {
       if (isLocked) return;
       const limit = activeTab === 'finger' ? 40 : 80;
       const newVal = Math.max(5, Math.min(limit, current + delta));
-      const rounded = Number(newVal.toFixed(2)); // Use 2 decimals for precision
-      
+      const rounded = Number(newVal.toFixed(2));
       setter(rounded);
-      // Sync if circle mode
-      if (ringShapeMode === 'circle') {
-          if (setter === setRingWidthMm) setRingHeightMm(rounded);
-          if (setter === setRingHeightMm) setRingWidthMm(rounded);
-      }
   }
-
-  // --- Drag Logic ---
-  
-  // 1. Vertical Drag (Used for Finger & Ring Height)
-  const handleVerticalDrag = (
-    e: React.PointerEvent, 
-    ref: React.RefObject<HTMLDivElement | null>, 
-    setter: (v: number) => void
-  ) => {
-    if (isLocked || !ref.current) return;
-    
-    const rect = ref.current.getBoundingClientRect();
-    // For finger: Bottom line based. For ring: Center based is better, but keeping your logic logic consistent
-    // Let's stick to your "Base Line" logic for Finger, but Center logic for Ring is easier?
-    // User requested NO logic change for Finger.
-    
-    if (activeTab === 'finger') {
-        const bottomLineY = rect.bottom - (rect.height * 0.15); 
-        const mouseY = e.clientY;
-        const heightPx = bottomLineY - mouseY;
-        let newMm = pxToMm(heightPx);
-        newMm = Math.max(5, Math.min(40, newMm));
-        setter(Number(newMm.toFixed(1)));
-    } else {
-        // RING Vertical Drag (Center based expansion)
-        // Dragging away from center increases size
-        const centerY = rect.top + rect.height / 2;
-        const distY = Math.abs(e.clientY - centerY);
-        const heightMm = pxToMm(distY * 2); // Distance is radius, so *2 for diameter
-        const validMm = Math.max(5, Math.min(80, heightMm));
-        
-        setter(Number(validMm.toFixed(2)));
-        if (ringShapeMode === 'circle') setRingWidthMm(Number(validMm.toFixed(2)));
-    }
-  };
-
-  // 2. Horizontal Drag (New for Ellipse Width)
-  const handleHorizontalDrag = (e: React.PointerEvent, ref: React.RefObject<HTMLDivElement | null>) => {
-      if (isLocked || !ref.current || activeTab !== 'ring') return;
-      
-      const rect = ref.current.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      const distX = Math.abs(e.clientX - centerX);
-      const widthMm = pxToMm(distX * 2);
-      const validMm = Math.max(5, Math.min(80, widthMm));
-
-      setRingWidthMm(Number(validMm.toFixed(2)));
-      if (ringShapeMode === 'circle') setRingHeightMm(Number(validMm.toFixed(2)));
-  };
 
   // --- Reusable Control Component ---
   const MeasurementControls = ({
@@ -282,7 +212,7 @@ export default function BalkrushnaRingMeasurementPage() {
     label: string;
     icon?: any;
   }) => (
-    <div className="space-y-3 mb-4">
+    <div className="space-y-3 mb-4 select-none">
       <div className="flex items-center justify-between">
          <span className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
             {Icon && <Icon size={14} />} {label}
@@ -300,7 +230,7 @@ export default function BalkrushnaRingMeasurementPage() {
          </Button>
          
          {/* Slider */}
-         <div className="relative flex-1 h-10 flex items-center">
+         <div className="relative flex-1 h-10 flex items-center group">
             <input
               type="range" min={5} max={activeTab === 'finger' ? 40 : 80} step={0.05}
               value={value}
@@ -310,12 +240,12 @@ export default function BalkrushnaRingMeasurementPage() {
             />
             <div className="w-full h-2 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden relative z-10">
                <div 
-                 className="h-full bg-orange-500"
+                 className="h-full bg-orange-500 transition-all duration-75"
                  style={{ width: `${((value - 5) / ((activeTab === 'finger' ? 40 : 80) - 5)) * 100}%` }}
                />
             </div>
             <div 
-                className="absolute h-6 w-6 bg-white border-2 border-orange-600 rounded-full shadow z-10 pointer-events-none transition-all"
+                className="absolute h-6 w-6 bg-white border-2 border-orange-600 rounded-full shadow z-10 pointer-events-none transition-all duration-75 group-active:scale-110"
                 style={{ 
                     left: `${((value - 5) / ((activeTab === 'finger' ? 40 : 80) - 5)) * 100}%`,
                     transform: 'translateX(-50%)'
@@ -335,7 +265,7 @@ export default function BalkrushnaRingMeasurementPage() {
   );
 
   return (
-    <div className="container mx-auto px-4 py-6 font-sans bg-gray-50 dark:bg-gray-950 min-h-screen select-none">
+    <div className="container mx-auto px-4 py-6 font-sans bg-gray-50 dark:bg-gray-950 min-h-screen">
       <div className="text-center mb-6">
         <h1 className="text-4xl font-black text-orange-600 dark:text-orange-500 tracking-tight">
           BALKRUSHNA
@@ -368,7 +298,7 @@ export default function BalkrushnaRingMeasurementPage() {
               </TabsTrigger>
             </TabsList>
 
-            {/* ===== FINGER TOOL (UNCHANGED LOGIC) ===== */}
+            {/* ===== FINGER TOOL ===== */}
             <TabsContent value="finger">
               <Card className="border-0 shadow-lg dark:bg-gray-900">
                 <CardContent className="p-6">
@@ -380,26 +310,25 @@ export default function BalkrushnaRingMeasurementPage() {
 
                   <div 
                     ref={fingerVisualizerRef}
-                    className="relative w-full h-80 bg-white dark:bg-gray-950 rounded-2xl border-2 border-gray-100 dark:border-gray-800 shadow-inner overflow-hidden touch-none flex flex-col items-center justify-center"
-                    onPointerMove={(e) => handleVerticalDrag(e, fingerVisualizerRef, setFingerThicknessMm)}
+                    className="relative w-full h-80 bg-white dark:bg-gray-950 rounded-2xl border-2 border-gray-100 dark:border-gray-800 shadow-inner overflow-hidden flex flex-col items-center justify-center"
                   >
-                      {/* FIXED BASE LINE LOGIC (PRESERVED) */}
+                      {/* Visualizer Content */}
                       <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none z-0">
-                         <span className="text-6xl font-black text-gray-900 dark:text-white">bkj</span>
+                          <span className="text-6xl font-black text-gray-900 dark:text-white">bkj</span>
                       </div>
                       <div className="absolute w-full h-1 bg-gray-800 dark:bg-gray-600 z-10" style={{ bottom: '15%' }}>
                           <div className="absolute -bottom-6 w-full text-center text-[10px] text-gray-400 uppercase tracking-widest font-bold">Base Line (Fixed)</div>
                       </div>
                       <div 
-                        className="absolute w-full border-b-2 border-orange-600 border-dashed z-20 flex items-end justify-center pb-1"
+                        className="absolute w-full border-b-2 border-orange-600 border-dashed z-20 flex items-end justify-center pb-1 transition-all duration-100 ease-out"
                         style={{ bottom: `calc(15% + ${mmToPx(fingerThicknessMm)}px)`, height: '20px' }}
                       >
                           <div className="bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-                             <ArrowDownToLine size={10} /> Adjust
+                             <ArrowDownToLine size={10} /> Finger Top
                           </div>
                       </div>
                       <div 
-                        className="absolute w-full bg-orange-500/10 z-0 border-l border-r border-orange-200/30"
+                        className="absolute w-full bg-orange-500/10 z-0 border-l border-r border-orange-200/30 transition-all duration-100 ease-out"
                         style={{ bottom: '15%', height: mmToPx(fingerThicknessMm) }}
                       />
                   </div>
@@ -418,7 +347,7 @@ export default function BalkrushnaRingMeasurementPage() {
               </Card>
             </TabsContent>
 
-            {/* ===== RING TOOL (UPDATED FOR 100% ACCURACY) ===== */}
+            {/* ===== RING TOOL ===== */}
             <TabsContent value="ring">
               <Card className="border-0 shadow-lg dark:bg-gray-900">
                 <CardContent className="p-6">
@@ -436,85 +365,113 @@ export default function BalkrushnaRingMeasurementPage() {
                   {/* Mode Selector */}
                   <div className="flex gap-2 justify-center mb-6 bg-gray-100 dark:bg-gray-800 p-1 rounded-full w-fit mx-auto">
                       <button 
-                         onClick={() => { setRingShapeMode('circle'); setRingHeightMm(ringWidthMm); }}
-                         className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all ${ringShapeMode === 'circle' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500'}`}
+                          onClick={() => setRingViewMode('caliper')}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all ${ringViewMode === 'caliper' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500'}`}
                       >
-                         <CircleIcon size={14} /> Standard Circle
+                          <Ruler size={14} /> Ring Width Match
                       </button>
                       <button 
-                         onClick={() => setRingShapeMode('ellipse')}
-                         className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all ${ringShapeMode === 'ellipse' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500'}`}
+                          onClick={() => setRingViewMode('circle')}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all ${ringViewMode === 'circle' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500'}`}
                       >
-                         <Maximize2 size={14} /> Bent/Oval Ring
+                          <CircleIcon size={14} /> Circle Match
                       </button>
                   </div>
 
-                  {/* 100% Accuracy Visualizer */}
+                  {/* Visualizer */}
                   <div 
                     ref={ringVisualizerRef}
-                    className="relative w-full h-80 bg-slate-950 rounded-2xl border-4 border-slate-800 shadow-2xl overflow-hidden touch-none flex items-center justify-center cursor-crosshair"
-                    onPointerMove={(e) => {
-                        handleHorizontalDrag(e, ringVisualizerRef);
-                        handleVerticalDrag(e, ringVisualizerRef, setRingHeightMm);
-                    }}
+                    className="relative w-full h-80 bg-slate-950 rounded-2xl border-4 border-slate-800 shadow-2xl overflow-hidden flex items-center justify-center"
                   >
                     {/* Grid Background */}
                     <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
                     
-                    {/* The Adjustable Ring Shape */}
-                    <div
-                        className="relative border-[3px] border-orange-500 rounded-full shadow-[0_0_30px_rgba(249,115,22,0.3)] z-10 box-content"
-                        style={{ 
-                            width: mmToPx(ringWidthMm), 
-                            height: mmToPx(ringHeightMm),
-                            backgroundColor: 'rgba(249,115,22,0.05)'
-                        }}
-                    >
-                        {/* Center Crosshair */}
-                        <div className="absolute top-1/2 left-0 w-full h-[1px] bg-orange-500/40 -translate-y-1/2" />
-                        <div className="absolute left-1/2 top-0 h-full w-[1px] bg-orange-500/40 -translate-x-1/2" />
-                        
-                        {/* Labels for "Inner Wall" */}
-                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] text-orange-400 font-bold whitespace-nowrap bg-slate-900 px-2 rounded-full border border-orange-500/30">
-                            ▲ INNER WALL ▲
-                        </div>
-                    </div>
+                    {/* --- CALIPER MODE (UPDATED: Ring Visual + Width Indicators) --- */}
+                    {ringViewMode === 'caliper' ? (
+                       <div 
+                          className="relative flex items-center justify-center transition-all duration-100 ease-out"
+                          style={{ 
+                            width: mmToPx(ringWidthMm),
+                            height: mmToPx(ringWidthMm), // Maintains aspect ratio for the visual base
+                          }}
+                       >
+                          {/* The Ring Outline */}
+                          <div className="absolute inset-0 rounded-full border-[6px] border-orange-500/20 box-border" />
+                          
+                          {/* Highlighted Side Walls (Left/Right Arcs) */}
+                          <div className="absolute left-[-3px] top-1/4 bottom-1/4 w-[6px] bg-orange-500 rounded-full shadow-[0_0_15px_rgba(249,115,22,0.8)]" />
+                          <div className="absolute right-[-3px] top-1/4 bottom-1/4 w-[6px] bg-orange-500 rounded-full shadow-[0_0_15px_rgba(249,115,22,0.8)]" />
 
-                    <div className="absolute bottom-3 text-center w-full text-slate-500 text-[10px] font-medium pointer-events-none">
-                       {ringShapeMode === 'circle' ? 'Drag anywhere to resize' : 'Drag Horizontally for Width, Vertically for Height'}
+                          {/* Measurement Arrows */}
+                          <div className="absolute w-full h-[1px] bg-orange-500/30 border-t border-dashed border-orange-500/50 flex items-center justify-between px-2">
+                             <ArrowLeftRight size={14} className="text-orange-500" />
+                             <ArrowLeftRight size={14} className="text-orange-500" />
+                          </div>
+
+                          {/* Center Label */}
+                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-950/90 px-3 py-1 rounded-full border border-orange-500/30">
+                             <span className="text-[10px] text-orange-400 font-bold tracking-wider uppercase">Match Inside Width</span>
+                          </div>
+
+                          {/* Side Labels */}
+                          <div className="absolute left-[-110px] top-1/2 -translate-y-1/2 text-right hidden sm:block">
+                             <span className="text-[10px] text-gray-500 font-medium">Inside Wall</span>
+                             <div className="h-[1px] w-8 bg-gray-700 ml-auto mt-1" />
+                          </div>
+                          <div className="absolute right-[-110px] top-1/2 -translate-y-1/2 text-left hidden sm:block">
+                             <span className="text-[10px] text-gray-500 font-medium">Inside Wall</span>
+                             <div className="h-[1px] w-8 bg-gray-700 mr-auto mt-1" />
+                          </div>
+                       </div>
+                    ) : (
+                      /* --- CIRCLE MODE VISUALIZATION (Existing) --- */
+                      <div
+                          className="relative rounded-full z-10 box-border transition-all duration-100 ease-out flex items-center justify-center"
+                          style={{ 
+                              width: mmToPx(ringWidthMm), 
+                              height: mmToPx(ringWidthMm),
+                              background: 'radial-gradient(circle, rgba(249,115,22,0.9) 0%, rgba(234,88,12,1) 100%)',
+                              boxShadow: '0 0 20px rgba(249,115,22,0.5)'
+                          }}
+                      >
+                          <div className="absolute top-1/2 left-0 w-full h-[1px] bg-white/20 -translate-y-1/2" />
+                          <div className="absolute left-1/2 top-0 h-full w-[1px] bg-white/20 -translate-x-1/2" />
+                          
+                          <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] text-orange-400 font-bold whitespace-nowrap bg-slate-900 px-3 py-1 rounded-full border border-orange-500/30 z-20 shadow-xl pointer-events-none">
+                              Fit INSIDE your ring
+                          </div>
+                      </div>
+                    )}
+
+                    <div className="absolute bottom-3 text-center w-full text-slate-400 text-xs font-medium pointer-events-none px-4">
+                       {ringViewMode === 'caliper' 
+                         ? "Ignore vertical shape - focus on matching the width of your ring"
+                         : "Adjust slider until the circle perfectly fills the inside of your ring"
+                       }
                     </div>
                   </div>
 
                   <div className="mt-6 space-y-2">
-                     {/* Lock Toggle */}
-                     <div className="flex justify-end mb-2">
-                         <Button 
-                           variant="ghost" size="sm" 
-                           onClick={() => setIsLocked(!isLocked)}
-                           className={isLocked ? "text-red-500 bg-red-50" : "text-gray-400"}
-                         >
-                           {isLocked ? <><Lock size={14} className="mr-1"/> Locked</> : <><Unlock size={14} className="mr-1"/> Unlock controls</>}
-                         </Button>
-                     </div>
+                      {/* Lock Toggle */}
+                      <div className="flex justify-end mb-2">
+                          <Button 
+                            variant="ghost" size="sm" 
+                            onClick={() => setIsLocked(!isLocked)}
+                            className={isLocked ? "text-red-500 bg-red-50" : "text-gray-400"}
+                          >
+                            {isLocked ? <><Lock size={14} className="mr-1"/> Locked</> : <><Unlock size={14} className="mr-1"/> Unlock controls</>}
+                          </Button>
+                      </div>
 
-                     {/* Controls */}
-                     <MeasurementControls
-                        value={ringWidthMm}
-                        setValue={setRingWidthMm}
-                        label={ringShapeMode === 'circle' ? "Diameter" : "Width (Horizontal)"}
-                        icon={ringShapeMode === 'circle' ? CircleIcon : MoveHorizontal}
-                     />
-                     
-                     {ringShapeMode === 'ellipse' && (
-                         <MeasurementControls
-                            value={ringHeightMm}
-                            setValue={setRingHeightMm}
-                            label="Height (Vertical)"
-                            icon={MoveVertical}
-                         />
-                     )}
-
-                     <Button
+                      {/* Controls */}
+                      <MeasurementControls
+                         value={ringWidthMm}
+                         setValue={setRingWidthMm}
+                         label="Internal Diameter"
+                         icon={ringViewMode === 'caliper' ? Ruler : CircleIcon}
+                      />
+                      
+                      <Button
                         onClick={calculateRingSize}
                         className="w-full h-14 text-lg font-bold bg-orange-600 hover:bg-orange-700 text-white shadow-lg rounded-xl mt-4"
                       >
@@ -526,7 +483,7 @@ export default function BalkrushnaRingMeasurementPage() {
             </TabsContent>
           </Tabs>
 
-          {/* ===== RESULTS (PRESERVED) ===== */}
+          {/* ===== RESULTS ===== */}
           {measuredSize && (
             <div id="result-card" className="pt-4 pb-10">
               <Card className="bg-green-600 text-white border-0 shadow-xl overflow-hidden relative">
@@ -554,7 +511,7 @@ export default function BalkrushnaRingMeasurementPage() {
           )}
         </div>
 
-        {/* ===== SIZE CHART SIDEBAR (PRESERVED) ===== */}
+        {/* ===== SIZE CHART SIDEBAR ===== */}
         <div className="hidden lg:block space-y-6">
             <Card>
                 <CardHeader>
@@ -584,7 +541,7 @@ export default function BalkrushnaRingMeasurementPage() {
         </div>
       </div>
 
-      {/* ===== MODALS (Calibration - PRESERVED) ===== */}
+      {/* ===== MODALS (Calibration) ===== */}
       
       {/* CARD CALIBRATION */}
       {showCardCalib && (
@@ -606,7 +563,7 @@ export default function BalkrushnaRingMeasurementPage() {
                 >
                   <div className="absolute inset-0 flex flex-col items-center justify-center opacity-20">
                       <ArrowLeftRight className="mb-2" />
-                     <span className="text-lg font-bold text-center">CARD<br/>WIDTH</span>
+                      <span className="text-lg font-bold text-center">CARD<br/>WIDTH</span>
                   </div>
                   <div className="absolute -bottom-7 w-full flex justify-between text-xs text-orange-600 font-bold uppercase tracking-widest">
                     <span>◄</span><span>Match Width</span><span>►</span>
